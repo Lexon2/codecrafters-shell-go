@@ -31,6 +31,8 @@ func main() {
 		switch command {
 		case "exit":
 			runExit(splitted)
+		case "echo":
+			fmt.Println(strings.Join(splitted[1:], " "))
 		default:
 			fmt.Println(command + ": command not found")
 		}
