@@ -99,9 +99,20 @@ func runCd(input []string) {
 		return
 	}
 
-	err := os.Chdir(input[1])
+	path := input[1]
+
+	if path == "~" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Println("Error getting home directory")
+			return
+		}
+		path = homeDir
+	}
+
+	err := os.Chdir(path)
 	if err != nil {
-		fmt.Println("cd: " + input[1] + ": No such file or directory")
+		fmt.Println("cd: " + path + ": No such file or directory")
 	}
 }
 
