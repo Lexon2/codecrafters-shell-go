@@ -15,12 +15,13 @@ import (
 // Ensures gofmt doesn't remove the "fmt" import in stage 1 (feel free to remove this!)
 var _ = fmt.Fprint
 
-var shellBuiltins = []string{"exit", "echo", "type", "pwd"}
+var shellBuiltins = []string{"exit", "echo", "type", "pwd", "cd"}
 var shellCommands = map[string]func([]string){
 	"exit": runExit,
 	"echo": runEcho,
 	"type": runType,
 	"pwd":  runPwd,
+	"cd":   runCd,
 }
 
 func main() {
@@ -90,6 +91,18 @@ func runPwd(input []string) {
 	}
 
 	fmt.Println(dir)
+}
+
+func runCd(input []string) {
+	if len(input) < 2 {
+		fmt.Println("cd: missing operand")
+		return
+	}
+
+	err := os.Chdir(input[1])
+	if err != nil {
+		fmt.Println("cd: " + input[1] + ": No such file or directory")
+	}
 }
 
 // External commands
