@@ -22,7 +22,6 @@ var shellCommands = map[string]func([]string){
 
 func main() {
 	for {
-		// Uncomment this block to pass the first stage
 		fmt.Fprint(os.Stdout, "$ ")
 
 		// Wait for user input
@@ -72,7 +71,7 @@ func runType(input []string) {
 
 	paths := os.Getenv("PATH")
 
-	for _, path := range strings.Split(paths, ":") {
+	for _, path := range strings.Split(paths, ";") {
 		pathToCommand := filepath.Join(path, command)
 
 		if _, err := os.Stat(pathToCommand); err == nil {
