@@ -15,11 +15,12 @@ import (
 // Ensures gofmt doesn't remove the "fmt" import in stage 1 (feel free to remove this!)
 var _ = fmt.Fprint
 
-var shellBuiltins = []string{"exit", "echo", "type"}
+var shellBuiltins = []string{"exit", "echo", "type", "pwd"}
 var shellCommands = map[string]func([]string){
 	"exit": runExit,
 	"echo": runEcho,
 	"type": runType,
+	"pwd":  runPwd,
 }
 
 func main() {
@@ -79,6 +80,16 @@ func runType(input []string) {
 	}
 
 	fmt.Println(command + " is " + externalCommand)
+}
+
+func runPwd(input []string) {
+	dir, err := os.Getwd()
+	if err != nil {
+		fmt.Println("Error getting current directory")
+		return
+	}
+
+	fmt.Println(dir)
 }
 
 // External commands
