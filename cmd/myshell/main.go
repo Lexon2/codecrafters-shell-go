@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -38,11 +39,12 @@ func main() {
 
 		run, ok := shellCommands[command]
 
-		if ok {
-			run(splitted)
-		} else {
+		if !ok {
 			fmt.Println(command + ": command not found")
+			os.Exit(1)
 		}
+
+		run(splitted)
 	}
 }
 
@@ -65,7 +67,19 @@ func runType(input []string) {
 
 	if ok {
 		fmt.Println(command + " is a shell builtin")
-	} else {
-		fmt.Println(command + ": not found")
+		return
 	}
+
+	paths := os.Getenv("PATH")
+
+	for _, path := range strings.Split(paths, ":") {
+		pathToCommand := filepath.Join(path, command)
+
+		if _, err := os.Stat(pathToCommand); err == nil {
+			fmt.Println(command + " is " + pathToCommand)
+			return
+		}
+	}
+
+	fmt.Println(command + ": not found")
 }
