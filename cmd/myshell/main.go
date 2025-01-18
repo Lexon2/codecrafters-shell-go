@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -39,13 +41,14 @@ func main() {
 		run, ok := shellCommands[command]
 
 		if !ok {
-			fmt.Println(command + ": command not found")
-			continue
+			runExternal(splitted)
+		} else {
+			run(splitted)
 		}
-
-		run(splitted)
 	}
 }
+
+// Shell builtins
 
 func runExit(input []string) {
 	num, err := strconv.Atoi(input[1])
@@ -69,16 +72,60 @@ func runType(input []string) {
 		return
 	}
 
-	paths := os.Getenv("PATH")
+	externalCommand, ok := findExternal(command)
+	if !ok {
+		fmt.Println(command + ": not found")
+		return
+	}
 
-	for _, path := range strings.Split(paths, ":") {
+	fmt.Println(command + " is " + externalCommand)
+}
+
+// External commands
+
+func runExternal(input []string) {
+	command := input[0]
+
+	_, ok := findExternal(command)
+	if !ok {
+		fmt.Println(command + ": command not found")
+		return
+	}
+
+	cmd := exec.Command(command, input[1:]...)
+
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
+
+	fmt.Print(string(output))
+}
+
+// Utility functions
+
+func findExternal(command string) (string, bool) {
+	paths := os.Getenv("PATH")
+	separator := getEnvPathSeparator()
+
+	for _, path := range strings.Split(paths, separator) {
 		pathToCommand := filepath.Join(path, command)
 
 		if _, err := os.Stat(pathToCommand); err == nil {
-			fmt.Println(command + " is " + pathToCommand)
-			return
+			return pathToCommand, true
 		}
 	}
 
-	fmt.Println(command + ": not found")
+	return "", false
+}
+
+func getEnvPathSeparator() string {
+	os := runtime.GOOS
+	switch os {
+	case "windows":
+		return ";"
+	default:
+		return ":"
+	}
 }
