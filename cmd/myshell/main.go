@@ -40,7 +40,7 @@ func main() {
 
 		if !ok {
 			fmt.Println(command + ": command not found")
-			os.Exit(1)
+			continue
 		}
 
 		run(splitted)
