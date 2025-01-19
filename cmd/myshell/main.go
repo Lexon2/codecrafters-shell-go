@@ -175,8 +175,10 @@ func parseArguments(argsInput string) []string {
 	}
 
 	var result []string
-	var hasSingleQuotes bool = false
 	var currentArg string = ""
+
+	var hasSingleQuotes bool = false
+	var hasSpace bool = false
 
 	for _, char := range strings.Split(argsInput, "") {
 		switch char {
@@ -184,6 +186,10 @@ func parseArguments(argsInput string) []string {
 			if hasSingleQuotes {
 				currentArg += char
 			} else {
+				if hasSpace {
+					continue
+				}
+				hasSpace = true
 				result = append(result, currentArg)
 				currentArg = ""
 			}
