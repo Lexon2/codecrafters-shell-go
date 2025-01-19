@@ -15,7 +15,7 @@ import (
 // Ensures gofmt doesn't remove the "fmt" import in stage 1 (feel free to remove this!)
 var _ = fmt.Fprint
 
-var shellBuiltins = []string{"exit", "echo", "type", "pwd", "cd", "cat"}
+var shellBuiltins = []string{"exit", "echo", "type", "pwd", "cd"}
 var shellCommands = map[string]func([]string){
 	"exit": runExit,
 	"echo": runEcho,
