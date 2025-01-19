@@ -220,7 +220,7 @@ func parseArguments(argsInput string) []string {
 	for i, char := range chars {
 		switch char {
 		case " ":
-			if isSingleQuoteArg {
+			if isSingleQuoteArg || isDoubleQuoteArg {
 				currentArg += char
 				continue
 			}
