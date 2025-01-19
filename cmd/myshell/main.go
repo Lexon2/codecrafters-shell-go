@@ -22,7 +22,7 @@ var shellCommands = map[string]func([]string){
 	"type": runType,
 	"pwd":  runPwd,
 	"cd":   runCd,
-	"cat":  runCat,
+	// "cat":  runCat,
 }
 
 func main() {
@@ -116,38 +116,38 @@ func runCd(args []string) {
 	}
 }
 
-func runCat(args []string) {
-	if len(args) < 1 {
-		fmt.Println("cat: missing operand")
-		return
-	}
+// func runCat(args []string) {
+// 	if len(args) < 1 {
+// 		fmt.Println("cat: missing operand")
+// 		return
+// 	}
 
-	for _, filePath := range args {
-		if strings.HasPrefix(filePath, "/") {
-			homeDir, err := os.UserHomeDir()
-			if err != nil {
-				fmt.Println("Error getting home directory")
-				return
-			}
-			filePath = homeDir + filePath
-		}
+// 	for _, filePath := range args {
+// 		if strings.HasPrefix(filePath, "/") {
+// 			homeDir, err := os.UserHomeDir()
+// 			if err != nil {
+// 				fmt.Println("Error getting home directory")
+// 				return
+// 			}
+// 			filePath = homeDir + filePath
+// 		}
 
-		file, err := os.Open(filePath)
-		if err != nil {
-			fmt.Println("cat: " + filePath + ": No such file or directory")
-			return
-		}
+// 		file, err := os.Open(filePath)
+// 		if err != nil {
+// 			fmt.Println("cat: " + filePath + ": No such file or directory")
+// 			return
+// 		}
 
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			fmt.Println(scanner.Text())
-		}
+// 		scanner := bufio.NewScanner(file)
+// 		for scanner.Scan() {
+// 			fmt.Println(scanner.Text())
+// 		}
 
-		if err := scanner.Err(); err != nil {
-			fmt.Println("Error reading file")
-		}
-	}
-}
+// 		if err := scanner.Err(); err != nil {
+// 			fmt.Println("Error reading file")
+// 		}
+// 	}
+// }
 
 // External commands
 
@@ -235,6 +235,7 @@ func parseArguments(argsInput string) []string {
 		case "'":
 			if isQuotesArg {
 				if charsLen >= i+1 || chars[i+1] != " " {
+					isQuotesArg = false
 					continue
 				}
 			}
