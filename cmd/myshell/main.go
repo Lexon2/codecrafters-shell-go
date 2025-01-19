@@ -204,7 +204,5 @@ func parseArguments(argsInput string) []string {
 		result = append(result, currentArg)
 	}
 
-	fmt.Println(result)
-
 	return result
 }
