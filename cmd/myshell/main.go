@@ -15,13 +15,14 @@ import (
 // Ensures gofmt doesn't remove the "fmt" import in stage 1 (feel free to remove this!)
 var _ = fmt.Fprint
 
-var shellBuiltins = []string{"exit", "echo", "type", "pwd", "cd"}
+var shellBuiltins = []string{"exit", "echo", "type", "pwd", "cd", "cat"}
 var shellCommands = map[string]func([]string){
 	"exit": runExit,
 	"echo": runEcho,
 	"type": runType,
 	"pwd":  runPwd,
 	"cd":   runCd,
+	"cat":  runCat,
 }
 
 func main() {
@@ -112,6 +113,30 @@ func runCd(args []string) {
 	err := os.Chdir(path)
 	if err != nil {
 		fmt.Println("cd: " + path + ": No such file or directory")
+	}
+}
+
+func runCat(args []string) {
+	if len(args) < 1 {
+		fmt.Println("cat: missing operand")
+		return
+	}
+
+	for _, filePath := range args {
+		file, err := os.Open(filePath)
+		if err != nil {
+			fmt.Println("cat: " + filePath + ": No such file or directory")
+			return
+		}
+
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			fmt.Println(scanner.Text())
+		}
+
+		if err := scanner.Err(); err != nil {
+			fmt.Println("Error reading file")
+		}
 	}
 }
 
