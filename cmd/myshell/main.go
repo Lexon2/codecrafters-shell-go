@@ -123,6 +123,15 @@ func runCat(args []string) {
 	}
 
 	for _, filePath := range args {
+		if strings.HasPrefix(filePath, "/") {
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				fmt.Println("Error getting home directory")
+				return
+			}
+			filePath = homeDir + filePath
+		}
+
 		file, err := os.Open(filePath)
 		if err != nil {
 			fmt.Println("cat: " + filePath + ": No such file or directory")
