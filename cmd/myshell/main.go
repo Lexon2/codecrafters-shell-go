@@ -185,14 +185,17 @@ func parseArguments(argsInput string) []string {
 		case " ":
 			if hasSingleQuotes {
 				currentArg += char
-			} else {
-				if hasSpace {
-					continue
-				}
-				hasSpace = true
-				result = append(result, currentArg)
-				currentArg = ""
+				continue
 			}
+			if hasSpace {
+				continue
+			}
+
+			hasSpace = true
+			result = append(result, currentArg)
+			currentArg = ""
+			continue
+
 		case "'":
 			if !hasSingleQuotes {
 				continue
