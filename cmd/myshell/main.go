@@ -37,23 +37,22 @@ func main() {
 		}
 
 		// len(command)-1 removes the newline character
-		splitted := strings.Split(input[:len(input)-1], " ")
-		command := splitted[0]
+		command, args := defineCommandAndArgs(input[:len(input)-1])
 
 		run, ok := shellCommands[command]
 
 		if !ok {
-			runExternal(splitted)
+			runExternal(command, args)
 		} else {
-			run(splitted)
+			run(args)
 		}
 	}
 }
 
 // Shell builtins
 
-func runExit(input []string) {
-	num, err := strconv.Atoi(input[1])
+func runExit(args []string) {
+	num, err := strconv.Atoi(args[0])
 	if err != nil {
 		os.Exit(1)
 	}
@@ -61,12 +60,12 @@ func runExit(input []string) {
 	os.Exit(num)
 }
 
-func runEcho(input []string) {
-	fmt.Println(strings.Join(input[1:], " "))
+func runEcho(args []string) {
+	fmt.Println(strings.Join(args, " "))
 }
 
-func runType(input []string) {
-	command := input[1]
+func runType(args []string) {
+	command := args[0]
 	ok := slices.Contains(shellBuiltins, command)
 
 	if ok {
@@ -83,7 +82,7 @@ func runType(input []string) {
 	fmt.Println(command + " is " + externalCommand)
 }
 
-func runPwd(input []string) {
+func runPwd(args []string) {
 	dir, err := os.Getwd()
 	if err != nil {
 		fmt.Println("Error getting current directory")
@@ -93,13 +92,13 @@ func runPwd(input []string) {
 	fmt.Println(dir)
 }
 
-func runCd(input []string) {
-	if len(input) < 2 {
+func runCd(args []string) {
+	if len(args) < 1 {
 		fmt.Println("cd: missing operand")
 		return
 	}
 
-	path := input[1]
+	path := args[0]
 
 	if path == "~" {
 		homeDir, err := os.UserHomeDir()
@@ -118,16 +117,14 @@ func runCd(input []string) {
 
 // External commands
 
-func runExternal(input []string) {
-	command := input[0]
-
+func runExternal(command string, input []string) {
 	_, ok := findExternal(command)
 	if !ok {
 		fmt.Println(command + ": command not found")
 		return
 	}
 
-	cmd := exec.Command(command, input[1:]...)
+	cmd := exec.Command(command, input...)
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -163,4 +160,41 @@ func getEnvPathSeparator() string {
 	default:
 		return ":"
 	}
+}
+
+func defineCommandAndArgs(userInput string) (string, []string) {
+	splitted := strings.Split(userInput, " ")
+	command := splitted[0]
+
+	return command, parseArguments(strings.Join(splitted[1:], " "))
+}
+
+func parseArguments(argsInput string) []string {
+	if len(argsInput) == 0 {
+		return []string{}
+	}
+
+	var result []string
+	var hasQuotes bool = false
+	var currentArg string = ""
+
+	for _, char := range strings.Split(argsInput, "") {
+		switch char {
+		case " ":
+			if hasQuotes {
+				currentArg += char
+			} else {
+				result = append(result, currentArg)
+				currentArg = ""
+			}
+		case "'":
+			hasQuotes = !hasQuotes
+		default:
+			currentArg += char
+		}
+
+	}
+	result = append(result, currentArg)
+
+	return result
 }
