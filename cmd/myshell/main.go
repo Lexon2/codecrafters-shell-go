@@ -213,13 +213,14 @@ func parseArguments(argsInput string) []string {
 	var chars []string = strings.Split(argsInput, "")
 	var charsLen int = len(chars)
 
-	var isQuotesArg bool = false
+	var isSingleQuoteArg bool = false
+	var isDoubleQuoteArg bool = false
 	var hasSpace bool = false
 
 	for i, char := range chars {
 		switch char {
 		case " ":
-			if isQuotesArg {
+			if isSingleQuoteArg {
 				currentArg += char
 				continue
 			}
@@ -233,14 +234,34 @@ func parseArguments(argsInput string) []string {
 			continue
 
 		case "'":
-			if isQuotesArg {
+			if isDoubleQuoteArg {
+				currentArg += char
+				continue
+			}
+
+			if isSingleQuoteArg {
 				if charsLen >= i+1 || chars[i+1] != " " {
-					isQuotesArg = false
+					isSingleQuoteArg = false
 					continue
 				}
 			}
 
-			isQuotesArg = !isQuotesArg
+			isSingleQuoteArg = !isSingleQuoteArg
+
+		case "\"":
+			if isSingleQuoteArg {
+				currentArg += char
+				continue
+			}
+
+			if isDoubleQuoteArg {
+				if charsLen >= i+1 || chars[i+1] != " " {
+					isDoubleQuoteArg = false
+					continue
+				}
+			}
+
+			isDoubleQuoteArg = !isDoubleQuoteArg
 
 		default:
 			currentArg += char
