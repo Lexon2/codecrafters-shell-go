@@ -194,16 +194,24 @@ func parseArguments(argsInput string) []string {
 				currentArg = ""
 			}
 		case "'":
-			if hasSingleQuotes {
+			if !hasSingleQuotes {
+				continue
+			}
+
+			if currentArg != "" {
+				hasSingleQuotes = !hasSingleQuotes
+
 				result = append(result, currentArg)
 				currentArg = ""
 			}
-			hasSingleQuotes = !hasSingleQuotes
 
 		default:
 			currentArg += char
 		}
 
+		if hasSpace {
+			hasSpace = false
+		}
 	}
 
 	if currentArg != "" {
