@@ -168,12 +168,9 @@ func getEnvPathSeparator() string {
 }
 
 func defineCommandAndArgs(userInput string) (string, []string) {
-	splitted := strings.Split(userInput, " ")
-	command := splitted[0]
+	parsedInput := parseArguments(userInput)
 
-	// fmt.Println(strings.Join(parseArguments(strings.Join(splitted[1:], " ")), ","))
-
-	return command, parseArguments(strings.Join(splitted[1:], " "))
+	return parsedInput[0], parsedInput[1:]
 }
 
 func parseArguments(argsInput string) []string {
