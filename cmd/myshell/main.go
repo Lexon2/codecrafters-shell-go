@@ -129,10 +129,6 @@ func runExternal(command string, input []string) {
 		return
 	}
 
-	if command == "cat" {
-		debugCatFolder(input[0])
-	}
-
 	cmd := exec.Command(command, input...)
 
 	output, err := cmd.Output()
@@ -145,23 +141,6 @@ func runExternal(command string, input []string) {
 }
 
 // Utility functions
-
-func debugCatFolder(filePath string) {
-	dirPath := filepath.Dir(filePath)
-	files, err := os.ReadDir(dirPath)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	for _, file := range files {
-		if file.IsDir() {
-			fmt.Println("Folder:", file.Name())
-		} else {
-			fmt.Println("File:", file.Name())
-		}
-	}
-}
 
 func findExternal(command string) (string, bool) {
 	paths := os.Getenv("PATH")
