@@ -250,12 +250,20 @@ func parseArguments(argsInput string) []string {
 				continue
 			}
 
-			if isDoubleQuoteArg || isSingleQuoteArg {
+			if isSingleQuoteArg {
 				currentArg += char
 				continue
 			}
 
-			currentArg += stack[stackLen-1]
+			nextChar := stack[stackLen-1]
+
+			if isDoubleQuoteArg {
+				if nextChar != "\"" && nextChar != "\\" && nextChar != "$" {
+					continue
+				}
+			}
+
+			currentArg += nextChar
 			stackLen--
 		default:
 			currentArg += char
