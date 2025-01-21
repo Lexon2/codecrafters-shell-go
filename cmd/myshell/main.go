@@ -129,7 +129,23 @@ func runExternal(command string, input []string) {
 		return
 	}
 
-	cmd := exec.Command(command, strings.Join(input, " "))
+	if command == "cat" {
+		var catOutput string = ""
+		for _, file := range input {
+			cmd := exec.Command(command, file)
+			output, err := cmd.Output()
+			if err != nil {
+				fmt.Printf("Error on executing external command: %s\n", err)
+				return
+			}
+
+			catOutput += string(output)
+		}
+		fmt.Print(catOutput)
+
+		return
+	}
+	cmd := exec.Command(command, input...)
 
 	output, err := cmd.Output()
 	if err != nil {
