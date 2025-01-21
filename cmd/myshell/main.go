@@ -130,7 +130,7 @@ func runExternal(command string, input []string) {
 	}
 
 	if command == "cat" {
-		debugCatFolder("/tmp/qux/")
+		debugCatFolder(input[0])
 	}
 
 	cmd := exec.Command(command, input...)
@@ -146,7 +146,8 @@ func runExternal(command string, input []string) {
 
 // Utility functions
 
-func debugCatFolder(dirPath string) {
+func debugCatFolder(filePath string) {
+	dirPath := filepath.Dir(filePath)
 	files, err := os.ReadDir(dirPath)
 	if err != nil {
 		fmt.Println("Error:", err)
