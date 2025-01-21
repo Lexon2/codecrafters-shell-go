@@ -22,7 +22,6 @@ var shellCommands = map[string]func([]string){
 	"type": runType,
 	"pwd":  runPwd,
 	"cd":   runCd,
-	// "cat":  runCat,
 }
 
 func main() {
@@ -116,34 +115,6 @@ func runCd(args []string) {
 	}
 }
 
-// func runCat(args []string) {
-// 	if len(args) < 1 {
-// 		fmt.Println("cat: missing operand")
-// 		return
-// 	}
-
-// 	for _, filePath := range args {
-// 		if strings.HasPrefix(filePath, "/") {
-// 			homeDir, err := os.UserHomeDir()
-// 			if err != nil {
-// 				fmt.Println("Error getting home directory")
-// 				return
-// 			}
-// 			filePath = homeDir + filePath
-// 		}
-
-// 		file, err := os.Open(filePath)
-// 		if err != nil {
-// 			fmt.Println("cat: " + filePath + ": No such file or directory")
-// 			return
-// 		}
-
-// 		scanner := bufio.NewScanner(file)
-// 		for scanner.Scan() {
-// 			fmt.Println(scanner.Text())
-// 		}
-
-// 		if err := scanner.Err(); err != nil {
 // 			fmt.Println("Error reading file")
 // 		}
 // 	}
@@ -200,6 +171,8 @@ func defineCommandAndArgs(userInput string) (string, []string) {
 	splitted := strings.Split(userInput, " ")
 	command := splitted[0]
 
+	// fmt.Println(strings.Join(parseArguments(strings.Join(splitted[1:], " ")), ","))
+
 	return command, parseArguments(strings.Join(splitted[1:], " "))
 }
 
@@ -208,30 +181,39 @@ func parseArguments(argsInput string) []string {
 		return []string{}
 	}
 
+	var stack []string = strings.Split(argsInput, "")
+	slices.Reverse(stack)
+	var stackLen int = len(stack)
+
 	var result []string
 	var currentArg string = ""
-	var chars []string = strings.Split(argsInput, "")
-	var charsLen int = len(chars)
 
 	var isSingleQuoteArg bool = false
 	var isDoubleQuoteArg bool = false
 	var hasSpace bool = false
 
-	for i, char := range chars {
+	for stackLen > 0 {
+		char := stack[stackLen-1]
+		stackLen--
+
 		switch char {
 		case " ":
 			if isSingleQuoteArg || isDoubleQuoteArg {
 				currentArg += char
 				continue
 			}
+
 			if hasSpace {
+				continue
+			}
+
+			if currentArg == "" {
 				continue
 			}
 
 			hasSpace = true
 			result = append(result, currentArg)
 			currentArg = ""
-			continue
 
 		case "'":
 			if isDoubleQuoteArg {
@@ -240,7 +222,7 @@ func parseArguments(argsInput string) []string {
 			}
 
 			if isSingleQuoteArg {
-				if charsLen >= i+1 || chars[i+1] != " " {
+				if stackLen == 0 || stack[stackLen-1] == " " {
 					isSingleQuoteArg = false
 					continue
 				}
@@ -255,7 +237,7 @@ func parseArguments(argsInput string) []string {
 			}
 
 			if isDoubleQuoteArg {
-				if charsLen >= i+1 || chars[i+1] != " " {
+				if stackLen == 0 || stack[stackLen-1] != " " {
 					isDoubleQuoteArg = false
 					continue
 				}
@@ -263,6 +245,18 @@ func parseArguments(argsInput string) []string {
 
 			isDoubleQuoteArg = !isDoubleQuoteArg
 
+		case "\\":
+			if stackLen == 0 {
+				continue
+			}
+
+			if isDoubleQuoteArg {
+				currentArg += char
+				continue
+			}
+
+			currentArg += stack[stackLen-1]
+			stackLen--
 		default:
 			currentArg += char
 		}
