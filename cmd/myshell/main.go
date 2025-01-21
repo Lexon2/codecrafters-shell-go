@@ -138,7 +138,7 @@ func runExternal(command string, input []string) {
 			fileNamesMatches = append(fileNamesMatches, fileName+", "+filesInFolder[i])
 		}
 
-		fmt.Print(strings.Join(fileNamesMatches, " | "))
+		fmt.Println(strings.Join(fileNamesMatches, " | "))
 
 		var catOutput string = ""
 		for _, file := range input {
