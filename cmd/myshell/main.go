@@ -129,11 +129,11 @@ func runExternal(command string, input []string) {
 		return
 	}
 
-	cmd := exec.Command(command, input...)
+	cmd := exec.Command(command, strings.Join(input, " "))
 
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		fmt.Printf("Error on executing external command: %s\n", err)
 		return
 	}
 
