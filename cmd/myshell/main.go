@@ -130,6 +130,16 @@ func runExternal(command string, input []string) {
 	}
 
 	if command == "cat" {
+		filesInFolder := findFilesInFolder(input[0])
+		fileNamesMatches := []string{}
+		for i, filePath := range input {
+			fileName := filepath.Base(filePath)
+
+			fileNamesMatches = append(fileNamesMatches, fileName+", "+filesInFolder[i])
+		}
+
+		fmt.Print(strings.Join(fileNamesMatches, " | "))
+
 		var catOutput string = ""
 		for _, file := range input {
 			cmd := exec.Command(command, file)
@@ -157,6 +167,21 @@ func runExternal(command string, input []string) {
 }
 
 // Utility functions
+
+func findFilesInFolder(filePath string) []string {
+	dirPath := filepath.Dir(filePath)
+	files, err := os.ReadDir(dirPath)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+
+	var result []string = []string{}
+	for _, file := range files {
+		result = append(result, file.Name())
+	}
+
+	return result
+}
 
 func findExternal(command string) (string, bool) {
 	paths := os.Getenv("PATH")
