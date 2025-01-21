@@ -250,7 +250,7 @@ func parseArguments(argsInput string) []string {
 				continue
 			}
 
-			if isDoubleQuoteArg {
+			if isDoubleQuoteArg || isSingleQuoteArg {
 				currentArg += char
 				continue
 			}
