@@ -259,6 +259,7 @@ func parseArguments(argsInput string) []string {
 
 			if isDoubleQuoteArg {
 				if nextChar != "\"" && nextChar != "\\" && nextChar != "$" {
+					currentArg += char
 					continue
 				}
 			}
