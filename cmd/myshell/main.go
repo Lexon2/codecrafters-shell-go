@@ -48,10 +48,9 @@ func main() {
 
 func processShellInput(input string) {
 	command, args, descriptor := defineCommandAndArgs(input)
+	run, ok := shellCommands[command]
 
 	var commandResults []CommandResult = nil
-
-	run, ok := shellCommands[command]
 
 	if !ok {
 		commandResults = runExternal(command, args)
@@ -164,6 +163,7 @@ func runCat(args []string) []CommandResult {
 		catOutput, ok, err := catFile(filePath)
 		if !ok {
 			result = append(result, CommandResult{Output: "", HasOutput: false, Err: err})
+			continue
 		}
 
 		result = append(result, CommandResult{Output: catOutput, HasOutput: true, Err: nil})
