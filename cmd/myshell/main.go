@@ -13,13 +13,14 @@ import (
 	"strings"
 )
 
-var shellBuiltins = []string{"exit", "echo", "type", "pwd", "cd"}
+var shellBuiltins = []string{"exit", "echo", "type", "pwd", "cd", "cat"}
 var shellCommands = map[string]func([]string) (string, bool, error){
 	"exit": runExit,
 	"echo": runEcho,
 	"type": runType,
 	"pwd":  runPwd,
 	"cd":   runCd,
+	"cat":  runCat,
 }
 
 func main() {
@@ -138,6 +139,25 @@ func runCd(args []string) (string, bool, error) {
 	return "", true, nil
 }
 
+func runCat(args []string) (string, bool, error) {
+	if len(args) < 1 {
+		return "", false, errors.New("cat: missing operand")
+	}
+
+	var output string
+
+	for _, arg := range args {
+		catOutput, ok, err := catFile(arg)
+		if !ok {
+			return "", false, err
+		}
+
+		output += catOutput
+	}
+
+	return output, true, nil
+}
+
 // External commands
 
 func runExternal(command string, input []string) (string, bool, error) {
@@ -157,6 +177,24 @@ func runExternal(command string, input []string) (string, bool, error) {
 }
 
 // Utility functions
+
+func catFile(path string) (string, bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", false, errors.New("cat: " + path + ": No such file or directory")
+	}
+
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var output string
+
+	for scanner.Scan() {
+		output += scanner.Text() + "\n"
+	}
+
+	return output, true, nil
+}
 
 func findExternal(command string) (string, bool) {
 	paths := os.Getenv("PATH")
