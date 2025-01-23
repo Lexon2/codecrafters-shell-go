@@ -14,13 +14,19 @@ import (
 )
 
 var shellBuiltins = []string{"exit", "echo", "type", "pwd", "cd", "cat"}
-var shellCommands = map[string]func([]string) (string, bool, error){
+var shellCommands = map[string]func([]string) []CommandResult{
 	"exit": runExit,
 	"echo": runEcho,
 	"type": runType,
 	"pwd":  runPwd,
 	"cd":   runCd,
 	"cat":  runCat,
+}
+
+type CommandResult struct {
+	Output    string
+	HasOutput bool
+	Err       error
 }
 
 func main() {
@@ -43,27 +49,36 @@ func main() {
 func processShellInput(input string) {
 	command, args, descriptor := defineCommandAndArgs(input)
 
-	var output string
-	var hasOutput bool = false
-	var err error
+	var commandResults []CommandResult = nil
 
 	run, ok := shellCommands[command]
 
 	if !ok {
-		output, hasOutput, err = runExternal(command, args)
+		commandResults = runExternal(command, args)
 	} else {
-		output, hasOutput, err = run(args)
+		commandResults = run(args)
 	}
 
-	if err != nil {
-		fmt.Println(err)
+	var outputs []string = nil
+	for _, result := range commandResults {
+		if result.Err != nil {
+			fmt.Println(result.Err)
 
+			return
+		}
+
+		if !result.HasOutput {
+			return
+		}
+
+		outputs = append(outputs, result.Output)
+	}
+
+	if len(outputs) == 0 {
 		return
 	}
 
-	if !hasOutput {
-		return
-	}
+	output := strings.Join(outputs, "")
 
 	if descriptor.StdoutPath != "" {
 		processOutputWithDescriptor(output, descriptor)
@@ -71,11 +86,12 @@ func processShellInput(input string) {
 		return
 	}
 	fmt.Println(strings.TrimSuffix(output, "\n"))
+
 }
 
 // Shell builtins
 
-func runExit(args []string) (string, bool, error) {
+func runExit(args []string) []CommandResult {
 	num, err := strconv.Atoi(args[0])
 	if err != nil {
 		os.Exit(1)
@@ -83,42 +99,42 @@ func runExit(args []string) (string, bool, error) {
 
 	os.Exit(num)
 
-	return "", false, nil
+	return []CommandResult{{Output: "", HasOutput: false, Err: nil}}
 }
 
-func runEcho(args []string) (string, bool, error) {
-	return strings.Join(args, " "), true, nil
+func runEcho(args []string) []CommandResult {
+	return []CommandResult{{Output: strings.Join(args, " "), HasOutput: true, Err: nil}}
 }
 
-func runType(args []string) (string, bool, error) {
+func runType(args []string) []CommandResult {
 	command := args[0]
 	// @TODO: Refactor this to use a map
 	ok := slices.Contains(shellBuiltins, command)
 
 	if ok {
-		return command + " is a shell builtin", true, nil
+		return []CommandResult{{Output: command + " is a shell builtin", HasOutput: true, Err: nil}}
 	}
 
 	externalCommand, ok := findExternal(command)
 	if !ok {
-		return "", false, errors.New(command + ": not found")
+		return []CommandResult{{Output: "", HasOutput: false, Err: errors.New(command + ": not found")}}
 	}
 
-	return command + " is " + externalCommand, true, nil
+	return []CommandResult{{Output: command + " is " + externalCommand, HasOutput: true, Err: nil}}
 }
 
-func runPwd(args []string) (string, bool, error) {
+func runPwd(args []string) []CommandResult {
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", false, fmt.Errorf("current directory could not be found")
+		return []CommandResult{{Output: "", HasOutput: false, Err: errors.New("current directory could not be found")}}
 	}
 
-	return dir, true, nil
+	return []CommandResult{{Output: dir, HasOutput: true, Err: nil}}
 }
 
-func runCd(args []string) (string, bool, error) {
+func runCd(args []string) []CommandResult {
 	if len(args) < 1 {
-		return "", false, fmt.Errorf("cd: missing operand")
+		return []CommandResult{{Output: "", HasOutput: false, Err: errors.New("cd: missing operand")}}
 	}
 
 	path := args[0]
@@ -126,54 +142,54 @@ func runCd(args []string) (string, bool, error) {
 	if path == "~" {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			return "", false, errors.New("home directory could not be found")
+			return []CommandResult{{Output: "", HasOutput: false, Err: errors.New("home directory could not be found")}}
 		}
 		path = homeDir
 	}
 
 	err := os.Chdir(path)
 	if err != nil {
-		return "", false, fmt.Errorf("cd: %s: No such file or directory", path)
+		return []CommandResult{{Output: "", HasOutput: false, Err: errors.New("cd: " + path + ": No such file or directory")}}
 	}
 
-	return "", true, nil
+	return []CommandResult{{Output: "", HasOutput: false, Err: nil}}
 }
 
-func runCat(args []string) (string, bool, error) {
+func runCat(args []string) []CommandResult {
 	if len(args) < 1 {
-		return "", false, errors.New("cat: missing operand")
+		return []CommandResult{{Output: "", HasOutput: false, Err: errors.New("cat: missing operand")}}
 	}
 
-	var output string
+	var result []CommandResult = nil
 
 	for _, filePath := range args {
 		catOutput, ok, err := catFile(filePath)
 		if !ok {
-			return "", false, err
+			result = append(result, CommandResult{Output: "", HasOutput: false, Err: err})
 		}
 
-		output += catOutput
+		result = append(result, CommandResult{Output: catOutput, HasOutput: true, Err: nil})
 	}
 
-	return output, true, nil
+	return result
 }
 
 // External commands
 
-func runExternal(command string, input []string) (string, bool, error) {
+func runExternal(command string, input []string) []CommandResult {
 	_, ok := findExternal(command)
 	if !ok {
-		return "", false, errors.New(command + ": command not found")
+		return []CommandResult{{Output: "", HasOutput: false, Err: errors.New(command + ": command not found")}}
 	}
 
 	cmd := exec.Command(command, input...)
 
 	output, err := cmd.Output()
 	if err != nil {
-		return "", false, errors.New("Error running external command:" + err.Error() + "\n")
+		return []CommandResult{{Output: "", HasOutput: false, Err: errors.New("Error running external command:" + err.Error() + "\n")}}
 	}
 
-	return string(output), true, nil
+	return []CommandResult{{Output: string(output), HasOutput: true, Err: nil}}
 }
 
 // Utility functions
@@ -181,14 +197,6 @@ func runExternal(command string, input []string) (string, bool, error) {
 func catFile(path string) (string, bool, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		// DEBUG ONLY!!!!!
-		if path != "nonexistent" {
-			files := logAllFilesInDir(filepath.Dir(path))
-			if files != "" {
-				fmt.Println(files)
-			}
-		}
-
 		return "", false, errors.New("cat: " + path + ": No such file or directory")
 	}
 
@@ -204,20 +212,20 @@ func catFile(path string) (string, bool, error) {
 	return output, true, nil
 }
 
-func logAllFilesInDir(path string) string {
-	files, err := os.ReadDir(path)
-	if err != nil {
-		return ""
-	}
+// func logAllFilesInDir(path string) string {
+// 	files, err := os.ReadDir(path)
+// 	if err != nil {
+// 		return ""
+// 	}
 
-	var output string
+// 	var output string
 
-	for _, file := range files {
-		output += file.Name() + "\n"
-	}
+// 	for _, file := range files {
+// 		output += file.Name() + "\n"
+// 	}
 
-	return output
-}
+// 	return output
+// }
 
 func findExternal(command string) (string, bool) {
 	paths := os.Getenv("PATH")
