@@ -181,6 +181,8 @@ func runExternal(command string, input []string) (string, bool, error) {
 func catFile(path string) (string, bool, error) {
 	file, err := os.Open(path)
 	if err != nil {
+		fmt.Println(logAllFilesInDir(filepath.Base(path)))
+
 		return "", false, errors.New("cat: " + path + ": No such file or directory")
 	}
 
@@ -194,6 +196,21 @@ func catFile(path string) (string, bool, error) {
 	}
 
 	return output, true, nil
+}
+
+func logAllFilesInDir(path string) string {
+	files, err := os.ReadDir(path)
+	if err != nil {
+		return ""
+	}
+
+	var output string
+
+	for _, file := range files {
+		output += file.Name() + "\n"
+	}
+
+	return output
 }
 
 func findExternal(command string) (string, bool) {
