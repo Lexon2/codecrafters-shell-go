@@ -70,7 +70,7 @@ func processShellInput(input string) {
 
 		return
 	}
-	fmt.Println(output)
+	fmt.Println(strings.TrimSuffix(output, "\n"))
 }
 
 // Shell builtins
