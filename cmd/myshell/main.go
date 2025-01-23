@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,11 +13,8 @@ import (
 	"strings"
 )
 
-// Ensures gofmt doesn't remove the "fmt" import in stage 1 (feel free to remove this!)
-var _ = fmt.Fprint
-
 var shellBuiltins = []string{"exit", "echo", "type", "pwd", "cd"}
-var shellCommands = map[string]func([]string){
+var shellCommands = map[string]func([]string) (string, bool, error){
 	"exit": runExit,
 	"echo": runEcho,
 	"type": runType,
@@ -37,65 +35,89 @@ func main() {
 		}
 
 		// len(command)-1 removes the newline character
-		command, args := defineCommandAndArgs(input[:len(input)-1])
-
-		run, ok := shellCommands[command]
-
-		if !ok {
-			runExternal(command, args)
-		} else {
-			run(args)
-		}
+		processShellInput(input[:len(input)-1])
 	}
+}
+
+func processShellInput(input string) {
+	command, args, descriptor := defineCommandAndArgs(input)
+
+	var output string
+	var hasOutput bool = false
+	var err error
+
+	run, ok := shellCommands[command]
+
+	if !ok {
+		output, hasOutput, err = runExternal(command, args)
+	} else {
+		output, hasOutput, err = run(args)
+	}
+
+	if err != nil {
+		fmt.Println(err)
+
+		return
+	}
+
+	if !hasOutput {
+		return
+	}
+
+	if descriptor.StdoutPath != "" {
+		processOutputWithDescriptor(output, descriptor)
+
+		return
+	}
+	fmt.Println(output)
 }
 
 // Shell builtins
 
-func runExit(args []string) {
+func runExit(args []string) (string, bool, error) {
 	num, err := strconv.Atoi(args[0])
 	if err != nil {
 		os.Exit(1)
 	}
 
 	os.Exit(num)
+
+	return "", false, nil
 }
 
-func runEcho(args []string) {
-	fmt.Println(strings.Join(args, " "))
+func runEcho(args []string) (string, bool, error) {
+	return strings.Join(args, " "), true, nil
 }
 
-func runType(args []string) {
+func runType(args []string) (string, bool, error) {
 	command := args[0]
+	// @TODO: Refactor this to use a map
 	ok := slices.Contains(shellBuiltins, command)
 
 	if ok {
-		fmt.Println(command + " is a shell builtin")
-		return
+		return command + " is a shell builtin", true, nil
 	}
 
 	externalCommand, ok := findExternal(command)
 	if !ok {
-		fmt.Println(command + ": not found")
-		return
+		return "", false, errors.New(command + ": not found")
 	}
 
-	fmt.Println(command + " is " + externalCommand)
+	return command + " is " + externalCommand, true, nil
 }
 
-func runPwd(args []string) {
+func runPwd(args []string) (string, bool, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		fmt.Println("Error getting current directory")
-		return
+		return "", false, fmt.Errorf("current directory could not be found")
 	}
 
-	fmt.Println(dir)
+	return dir, true, nil
 }
 
-func runCd(args []string) {
+func runCd(args []string) (string, bool, error) {
 	if len(args) < 1 {
-		fmt.Println("cd: missing operand")
-		return
+		return "", false, fmt.Errorf("cd: missing operand")
 	}
 
 	path := args[0]
@@ -103,41 +125,35 @@ func runCd(args []string) {
 	if path == "~" {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Println("Error getting home directory")
-			return
+			return "", false, errors.New("home directory could not be found")
 		}
 		path = homeDir
 	}
 
 	err := os.Chdir(path)
 	if err != nil {
-		fmt.Println("cd: " + path + ": No such file or directory")
+		return "", false, fmt.Errorf("cd: %s: No such file or directory", path)
 	}
-}
 
-// 			fmt.Println("Error reading file")
-// 		}
-// 	}
-// }
+	return "", true, nil
+}
 
 // External commands
 
-func runExternal(command string, input []string) {
+func runExternal(command string, input []string) (string, bool, error) {
 	_, ok := findExternal(command)
 	if !ok {
-		fmt.Println(command + ": command not found")
-		return
+		return "", false, errors.New(command + ": command not found")
 	}
 
 	cmd := exec.Command(command, input...)
 
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("Error on executing external command: %s\n", err)
-		return
+		return "", false, errors.New("Error running external command:" + err.Error() + "\n")
 	}
 
-	fmt.Print(string(output))
+	return string(output), true, nil
 }
 
 // Utility functions
@@ -167,10 +183,49 @@ func getEnvPathSeparator() string {
 	}
 }
 
-func defineCommandAndArgs(userInput string) (string, []string) {
+func defineCommandAndArgs(userInput string) (string, []string, Descriptor) {
 	parsedInput := parseArguments(userInput)
+	command := parsedInput[0]
+	args := parsedInput[1:]
 
-	return parsedInput[0], parsedInput[1:]
+	descriptorIndex, descriptor := findDescriptor(args)
+
+	return command, args[:descriptorIndex+1], descriptor
+}
+
+type Descriptor struct {
+	StdoutPath string
+}
+
+func findDescriptor(args []string) (int, Descriptor) {
+	var descriptor Descriptor = Descriptor{StdoutPath: ""}
+	var argsLen int = len(args) - 1
+	var descriptorIndex int = argsLen
+
+	for i := argsLen; i >= 0; i-- {
+		if args[i] == ">" || args[i] == "1>" {
+			// Check if there is a path after the redirection operator
+			if (i + 1) > argsLen {
+				continue
+			}
+			descriptor.StdoutPath = args[i+1]
+			descriptorIndex = i - 1
+		}
+	}
+
+	return descriptorIndex, descriptor
+}
+
+func processOutputWithDescriptor(output string, descriptor Descriptor) bool {
+	file, err := os.Create(descriptor.StdoutPath)
+	if err != nil {
+		return false
+	}
+
+	file.WriteString(output)
+	file.Close()
+
+	return true
 }
 
 func parseArguments(argsInput string) []string {
