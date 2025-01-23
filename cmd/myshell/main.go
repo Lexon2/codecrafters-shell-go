@@ -63,8 +63,6 @@ func processShellInput(input string) {
 	for _, result := range commandResults {
 		if result.Err != nil {
 			fmt.Println(result.Err)
-
-			return
 		}
 
 		if !result.HasOutput {
