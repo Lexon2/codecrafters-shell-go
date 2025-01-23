@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-var shellBuiltins = []string{"exit", "echo", "type", "pwd", "cd", "cat"}
+var shellBuiltins = []string{"exit", "echo", "type", "pwd", "cd"}
 var shellCommands = map[string]func([]string) []CommandResult{
 	"exit": runExit,
 	"echo": runEcho,
@@ -70,7 +70,7 @@ func processShellInput(input string) {
 			continue
 		}
 
-		outputs = append(outputs, strings.Trim(result.Output, "\n"))
+		outputs = append(outputs, strings.TrimSuffix(result.Output, "\n"))
 	}
 
 	if len(outputs) == 0 {
@@ -176,20 +176,31 @@ func runCat(args []string) []CommandResult {
 
 // External commands
 
-func runExternal(command string, input []string) []CommandResult {
+func runExternal(command string, args []string) []CommandResult {
 	_, ok := findExternal(command)
 	if !ok {
 		return []CommandResult{{Output: "", HasOutput: false, Err: errors.New(command + ": command not found")}}
 	}
 
-	cmd := exec.Command(command, input...)
+	result := []CommandResult{}
 
-	output, err := cmd.Output()
-	if err != nil {
-		return []CommandResult{{Output: "", HasOutput: false, Err: errors.New("Error running external command:" + err.Error() + "\n")}}
+	for _, arg := range args {
+		cmd := exec.Command(command, arg)
+		output, err := cmd.Output()
+
+		if err != nil {
+			switch command {
+			case "cat":
+				result = append(result, CommandResult{Output: "", HasOutput: false, Err: errors.New("cat: " + arg + ": No such file or directory")})
+			default:
+				result = append(result, CommandResult{Output: "", HasOutput: false, Err: errors.New("Error running external command:" + err.Error() + "\n")})
+			}
+		}
+
+		result = append(result, CommandResult{Output: string(output), HasOutput: true, Err: nil})
 	}
 
-	return []CommandResult{{Output: string(output), HasOutput: true, Err: nil}}
+	return result
 }
 
 // Utility functions
