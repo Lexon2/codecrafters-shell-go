@@ -181,7 +181,10 @@ func runExternal(command string, input []string) (string, bool, error) {
 func catFile(path string) (string, bool, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		fmt.Println(logAllFilesInDir(filepath.Base(path)))
+		base := filepath.Base(path)
+		if base != "" {
+			fmt.Println(logAllFilesInDir(base))
+		}
 
 		return "", false, errors.New("cat: " + path + ": No such file or directory")
 	}
