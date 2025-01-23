@@ -222,6 +222,8 @@ func processOutputWithDescriptor(output string, descriptor Descriptor) bool {
 		return false
 	}
 
+	output = strings.TrimSuffix(output, "\n")
+
 	file.WriteString(output)
 	file.Close()
 
