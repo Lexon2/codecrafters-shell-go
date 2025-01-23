@@ -20,13 +20,17 @@ var shellCommands = map[string]func([]string) []CommandResult{
 	"type": runType,
 	"pwd":  runPwd,
 	"cd":   runCd,
-	"cat":  runCat,
 }
 
 type CommandResult struct {
 	Output    string
 	HasOutput bool
 	Err       error
+}
+
+type RedirectionInfo struct {
+	StdoutPath string
+	StderrPath string
 }
 
 func main() {
@@ -59,9 +63,10 @@ func processShellInput(input string) {
 	}
 
 	var outputs []string = nil
+	var errors []string = nil
 	for _, result := range commandResults {
 		if result.Err != nil {
-			fmt.Println(result.Err)
+			errors = append(errors, result.Err.Error())
 
 			continue
 		}
@@ -73,18 +78,26 @@ func processShellInput(input string) {
 		outputs = append(outputs, strings.TrimSuffix(result.Output, "\n"))
 	}
 
-	if len(outputs) == 0 {
-		return
+	if len(outputs) != 0 {
+		output := strings.Join(outputs, "")
+
+		if descriptor.StdoutPath != "" {
+			processOutputWithRedirection(output, descriptor)
+		} else {
+			fmt.Println(strings.TrimSuffix(output, "\n"))
+		}
 	}
 
-	output := strings.Join(outputs, "")
+	if len(errors) != 0 {
+		concatenatedErrors := strings.Join(errors, "")
 
-	if descriptor.StdoutPath != "" {
-		processOutputWithDescriptor(output, descriptor)
+		if descriptor.StderrPath != "" {
+			processErrorWithRedirection(concatenatedErrors, descriptor)
+		} else {
+			fmt.Fprintln(os.Stderr, concatenatedErrors)
+		}
 
-		return
 	}
-	fmt.Println(strings.TrimSuffix(output, "\n"))
 
 }
 
@@ -154,26 +167,6 @@ func runCd(args []string) []CommandResult {
 	return []CommandResult{{Output: "", HasOutput: false, Err: nil}}
 }
 
-func runCat(args []string) []CommandResult {
-	if len(args) < 1 {
-		return []CommandResult{{Output: "", HasOutput: false, Err: errors.New("cat: missing operand")}}
-	}
-
-	var result []CommandResult = nil
-
-	for _, filePath := range args {
-		catOutput, ok, err := catFile(filePath)
-		if !ok {
-			result = append(result, CommandResult{Output: "", HasOutput: false, Err: err})
-			continue
-		}
-
-		result = append(result, CommandResult{Output: catOutput, HasOutput: true, Err: nil})
-	}
-
-	return result
-}
-
 // External commands
 
 func runExternal(command string, args []string) []CommandResult {
@@ -213,39 +206,6 @@ func runExternal(command string, args []string) []CommandResult {
 
 // Utility functions
 
-func catFile(path string) (string, bool, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", false, errors.New("cat: " + path + ": No such file or directory")
-	}
-
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	var output string
-
-	for scanner.Scan() {
-		output += scanner.Text() + "\n"
-	}
-
-	return output, true, nil
-}
-
-// func logAllFilesInDir(path string) string {
-// 	files, err := os.ReadDir(path)
-// 	if err != nil {
-// 		return ""
-// 	}
-
-// 	var output string
-
-// 	for _, file := range files {
-// 		output += file.Name() + "\n"
-// 	}
-
-// 	return output
-// }
-
 func findExternal(command string) (string, bool) {
 	paths := os.Getenv("PATH")
 	separator := getEnvPathSeparator()
@@ -271,7 +231,7 @@ func getEnvPathSeparator() string {
 	}
 }
 
-func defineCommandAndArgs(userInput string) (string, []string, Descriptor) {
+func defineCommandAndArgs(userInput string) (string, []string, RedirectionInfo) {
 	parsedInput := parseArguments(userInput)
 	command := parsedInput[0]
 	args := parsedInput[1:]
@@ -281,22 +241,21 @@ func defineCommandAndArgs(userInput string) (string, []string, Descriptor) {
 	return command, args[:descriptorIndex+1], descriptor
 }
 
-type Descriptor struct {
-	StdoutPath string
-}
-
-func findDescriptor(args []string) (int, Descriptor) {
-	var descriptor Descriptor = Descriptor{StdoutPath: ""}
+func findDescriptor(args []string) (int, RedirectionInfo) {
+	var descriptor RedirectionInfo = RedirectionInfo{StdoutPath: "", StderrPath: ""}
 	var argsLen int = len(args) - 1
 	var descriptorIndex int = argsLen
 
 	for i := argsLen; i >= 0; i-- {
+		// Skip the last element
+		if i == argsLen {
+			continue
+		}
 		if args[i] == ">" || args[i] == "1>" {
-			// Check if there is a path after the redirection operator
-			if (i + 1) > argsLen {
-				continue
-			}
 			descriptor.StdoutPath = args[i+1]
+			descriptorIndex = i - 1
+		} else if args[i] == "2>" {
+			descriptor.StderrPath = args[i+1]
 			descriptorIndex = i - 1
 		}
 	}
@@ -304,8 +263,21 @@ func findDescriptor(args []string) (int, Descriptor) {
 	return descriptorIndex, descriptor
 }
 
-func processOutputWithDescriptor(output string, descriptor Descriptor) bool {
-	file, err := os.Create(descriptor.StdoutPath)
+func processOutputWithRedirection(output string, redirectionInfo RedirectionInfo) bool {
+	file, err := os.Create(redirectionInfo.StdoutPath)
+	if err != nil {
+		return false
+	}
+
+	output = strings.TrimSuffix(output, "\n")
+
+	file.WriteString(output)
+	file.Close()
+
+	return true
+}
+func processErrorWithRedirection(output string, redirectionInfo RedirectionInfo) bool {
+	file, err := os.Create(redirectionInfo.StderrPath)
 	if err != nil {
 		return false
 	}
