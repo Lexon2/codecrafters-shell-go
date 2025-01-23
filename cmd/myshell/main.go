@@ -184,19 +184,27 @@ func runExternal(command string, args []string) []CommandResult {
 
 	result := []CommandResult{}
 
-	for _, arg := range args {
-		cmd := exec.Command(command, arg)
-		output, err := cmd.Output()
+	switch command {
+	// Special case for cat command.
+	// For now, I cant figure out how to handle multiple files with correct error handling :(
+	// @TODO: Refactor this!!
+	case "cat":
+		for _, arg := range args {
+			cmd := exec.Command(command, arg)
+			output, err := cmd.Output()
 
-		if err != nil {
-			switch command {
-			case "cat":
+			if err != nil {
 				result = append(result, CommandResult{Output: "", HasOutput: false, Err: errors.New("cat: " + arg + ": No such file or directory")})
-			default:
-				result = append(result, CommandResult{Output: "", HasOutput: false, Err: errors.New("Error running external command:" + err.Error() + "\n")})
 			}
-		}
 
+			result = append(result, CommandResult{Output: string(output), HasOutput: true, Err: nil})
+		}
+	default:
+		cmd := exec.Command(command, args...)
+		output, err := cmd.Output()
+		if err != nil {
+			result = append(result, CommandResult{Output: "", HasOutput: false, Err: errors.New("Error running external command:" + err.Error() + "\n")})
+		}
 		result = append(result, CommandResult{Output: string(output), HasOutput: true, Err: nil})
 	}
 
