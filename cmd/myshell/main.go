@@ -70,7 +70,7 @@ func processShellInput(input string) {
 			continue
 		}
 
-		outputs = append(outputs, result.Output)
+		outputs = append(outputs, strings.Trim(result.Output, "\n"))
 	}
 
 	if len(outputs) == 0 {
