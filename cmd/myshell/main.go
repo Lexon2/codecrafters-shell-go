@@ -146,8 +146,8 @@ func runCat(args []string) (string, bool, error) {
 
 	var output string
 
-	for _, arg := range args {
-		catOutput, ok, err := catFile(arg)
+	for _, filePath := range args {
+		catOutput, ok, err := catFile(filePath)
 		if !ok {
 			return "", false, err
 		}
@@ -179,6 +179,14 @@ func runExternal(command string, input []string) (string, bool, error) {
 // Utility functions
 
 func catFile(path string) (string, bool, error) {
+	if strings.HasPrefix(path, "/") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", false, err
+		}
+		path = homeDir + path
+	}
+
 	file, err := os.Open(path)
 	if err != nil {
 		return "", false, errors.New("cat: " + path + ": No such file or directory")
