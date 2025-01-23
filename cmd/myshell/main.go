@@ -181,7 +181,7 @@ func runExternal(command string, input []string) (string, bool, error) {
 func catFile(path string) (string, bool, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		files := logAllFilesInDir(filepath.Base(path))
+		files := logAllFilesInDir(filepath.Dir(path))
 		if files != "" {
 			fmt.Println(files)
 		}
