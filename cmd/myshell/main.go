@@ -179,14 +179,6 @@ func runExternal(command string, input []string) (string, bool, error) {
 // Utility functions
 
 func catFile(path string) (string, bool, error) {
-	if strings.HasPrefix(path, "/") {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return "", false, err
-		}
-		path = homeDir + path
-	}
-
 	file, err := os.Open(path)
 	if err != nil {
 		return "", false, errors.New("cat: " + path + ": No such file or directory")
