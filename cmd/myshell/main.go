@@ -62,10 +62,12 @@ func processShellInput(input string) {
 	for _, result := range commandResults {
 		if result.Err != nil {
 			fmt.Println(result.Err)
+
+			continue
 		}
 
 		if !result.HasOutput {
-			return
+			continue
 		}
 
 		outputs = append(outputs, result.Output)
